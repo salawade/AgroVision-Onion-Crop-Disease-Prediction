@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+const API_URL = "http://127.0.0.1:8000";
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
@@ -22,7 +23,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (username, email, password) => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/auth/register', {
+      const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password }),
@@ -42,7 +43,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/auth/login', {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -78,7 +79,7 @@ export const AuthProvider = ({ children }) => {
     if (!user) return { success: false, error: 'Not logged in' };
     
     try {
-      const response = await fetch('http://127.0.0.1:8000/auth/sync-history', {
+      const response = await fetch(`${API_URL}/auth/sync-history`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

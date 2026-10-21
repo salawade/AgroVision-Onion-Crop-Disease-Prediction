@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { Link } from "react-router-dom";
 
 // ── Icons ──────────────────────────────────────────────────────────
 const HomeIcon = () => (
@@ -106,6 +107,10 @@ const Navbar = () => {
             </NavLink>
           ))}
         </div>
+
+         <Link to="/profile">
+             👤 Profile
+         </Link>
 
         {/* Right side badges + hamburger */}
         <div className="flex items-center gap-3">

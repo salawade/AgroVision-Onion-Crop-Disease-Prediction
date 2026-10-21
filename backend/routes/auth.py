@@ -98,8 +98,12 @@ async def register(data: RegisterRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Registration failed - user already exists")
     except Exception as e:
         db.rollback()
-        print(f"Registration error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Registration error")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 
 @router.post("/auth/login")
@@ -152,9 +156,12 @@ async def login(data: LoginRequest, db: Session = Depends(get_db)):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Login error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Login error")
-
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 @router.post("/auth/verify")
 async def verify(data: dict, db: Session = Depends(get_db)):

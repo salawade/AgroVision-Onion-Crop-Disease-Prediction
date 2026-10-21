@@ -3,6 +3,7 @@
  * Overview grid: stats, scan, weather, chatbot, history
  */
 import React, { useState, useMemo } from 'react';
+import { useAuth } from "../context/AuthContext";
 import { useHistory } from '../context/HistoryContext';
 import Upload from '../components/Upload';
 import Result from '../components/Result';
@@ -124,6 +125,7 @@ const Dashboard = () => {
   const [result,  setResult]  = useState(null);
   const [preview, setPreview] = useState(null);
   const { history, addHistoryEntry } = useHistory();
+  const { user } = useAuth();
 
   // ── Derived stats ──────────────────────────────────────────────
   const stats = useMemo(() => {
@@ -147,22 +149,75 @@ const Dashboard = () => {
 
   const COLORS = ['bg-red-400','bg-amber-400','bg-sky-400','bg-purple-400','bg-forest-400'];
 
-  const handleResult = (data, imgPreview, filename) => {
-    setResult(data);
-    setPreview(imgPreview);
-    addHistoryEntry({
-      id:         Date.now(),
-      disease:    data.disease,
-      confidence: data.confidence,
-      preview:    imgPreview,
-      filename:   filename || 'image.jpg',
-      date:       new Date().toLocaleDateString(),
-    });
-    setTimeout(() => {
-      document.getElementById('dash-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 150);
+ const handleResult = async (data, imgPreview, filename) => {
+
+  setResult(data);
+
+  setPreview(imgPreview);
+
+  const entry = {
+
+    id: Date.now(),
+
+    disease: data.disease,
+
+    confidence: data.confidence,
+
+    preview: imgPreview,
+
+    filename: filename || "image.jpg",
+
+    date: new Date().toISOString()
+
   };
 
+  addHistoryEntry(entry);
+
+  // Save prediction for logged-in user
+  if (user) {
+
+    try {
+
+      await fetch("http://127.0.0.1:8000/auth/sync-history", {
+
+        method: "POST",
+
+        headers: {
+
+          "Content-Type": "application/json"
+
+        },
+
+        body: JSON.stringify({
+
+          farmer_id: user.id,
+
+          history: [entry]
+
+        })
+
+      });
+
+    } catch (err) {
+
+      console.log("History sync failed", err);
+
+    }
+
+  }
+
+  setTimeout(() => {
+
+    document
+      .getElementById("dash-result")
+      ?.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+
+  }, 150);
+
+};
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6 page-enter">
 

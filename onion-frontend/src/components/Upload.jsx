@@ -6,10 +6,12 @@
  *              directly (works on iOS Safari, Android Chrome, all mobile browsers)
  *  - Desktop → uses getUserMedia for live webcam feed with shutter button
  */
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { predictDisease } from '../services/api';
-import { useTranslation } from '../context/LanguageContext';
-import Loader from './Loader';
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { predictDisease } from "../services/api";
+import { useTranslation } from "../context/LanguageContext";
+import Loader from "./Loader";
 
 const ACCEPTED = ['image/jpeg', 'image/jpg', 'image/png'];
 const MAX_MB   = 10;
@@ -63,6 +65,8 @@ const Upload = ({ onResult }) => {
   const streamRef  = useRef(null);   // MediaStream reference
 
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   // ── Stop webcam stream ─────────────────────────────────────────
   const stopCam = useCallback(() => {
@@ -198,19 +202,43 @@ const Upload = ({ onResult }) => {
 
   // ── Analyze ───────────────────────────────────────────────────
   const handleAnalyze = async () => {
-    if (!file) { setError('Please select or capture an image first.'); return; }
-    setError(null); setLoading(true);
-    try {
-      const data = await predictDisease(file);
-      onResult(data, preview, file.name);
-    } catch (err) {
-      if (err.response)     setError(err.response.data?.detail || 'Server error while analyzing.');
-      else if (err.request) setError('Cannot reach backend. Make sure the server is running.');
-      else                  setError('Something went wrong. Please try again.');
-    } finally {
-      setLoading(false);
+    if (!file) {
+        setError("Please select or capture an image first.");
+        return;
     }
-  };
+
+    if (!user) {
+        navigate("/login");
+        return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+        const result = await predictDisease(file, user.id);
+
+        console.log(result);
+
+        if (onResult) {
+            onResult(result, preview, file.name);
+        }
+
+    } catch (err) {
+        console.error(err);
+
+        if (err.response) {
+            setError(err.response.data?.detail || "Server error while analyzing.");
+        } else if (err.request) {
+            setError("Cannot connect to backend.");
+        } else {
+            setError(err.message);
+        }
+
+    } finally {
+        setLoading(false);
+    }
+};
 
   // ── Shared preview block ──────────────────────────────────────
   const PreviewBlock = ({ onRemove, removeLabel = 'Remove & re-upload' }) => (

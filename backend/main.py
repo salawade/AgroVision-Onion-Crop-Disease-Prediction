@@ -4,16 +4,21 @@ import tensorflow as tf
 import json
 import os
 
+from database import Base, engine
 from routes.predict import router as predict_router
 from routes.chat import router as chat_router
 from routes.auth import router as auth_router
+from routes.profile import router as profile_router
 
 app = FastAPI()
+Base.metadata.create_all(bind=engine)
 
 # CORS (React connection)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[        
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,6 +44,7 @@ app.state.class_names = class_names
 app.include_router(predict_router)
 app.include_router(chat_router)
 app.include_router(auth_router)
+app.include_router(profile_router)
 
 # ── Health Check Endpoint ───────────────────────────────────────────
 @app.get("/health", tags=["Health"])
