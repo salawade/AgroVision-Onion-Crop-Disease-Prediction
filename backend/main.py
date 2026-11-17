@@ -19,7 +19,9 @@ from routes.auth import router as auth_router
 from routes.profile import router as profile_router
 
 
-# ── Create FastAPI Application ─────────────────────────────────────
+# ============================================================
+# 1. CREATE FASTAPI APPLICATION
+# ============================================================
 
 app = FastAPI(
     title="AgroVision API",
@@ -30,7 +32,9 @@ app = FastAPI(
 Base.metadata.create_all(bind=engine)
 
 
-# ── CORS Configuration ─────────────────────────────────────────────
+# ============================================================
+# 2. CORS CONFIGURATION
+# ============================================================
 
 app.add_middleware(
     CORSMiddleware,
@@ -45,12 +49,16 @@ app.add_middleware(
 )
 
 
-# ── Base Directory ─────────────────────────────────────────────────
+# ============================================================
+# 3. BASE DIRECTORY
+# ============================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-# ── Load AI Disease Prediction Model ────────────────────────────────
+# ============================================================
+# 4. LOAD AI DISEASE PREDICTION MODEL
+# ============================================================
 
 model_path = os.path.join(
     BASE_DIR,
@@ -61,7 +69,9 @@ model_path = os.path.join(
 model = tf.keras.models.load_model(model_path)
 
 
-# ── Load Disease Class Names ────────────────────────────────────────
+# ============================================================
+# 5. LOAD DISEASE CLASS NAMES
+# ============================================================
 
 classes_path = os.path.join(
     BASE_DIR,
@@ -73,13 +83,17 @@ with open(classes_path, "r", encoding="utf-8") as f:
     class_names = json.load(f)
 
 
-# ── Attach Model to Application State ──────────────────────────────
+# ============================================================
+# 6. ATTACH MODEL TO APPLICATION STATE
+# ============================================================
 
 app.state.model = model
 app.state.class_names = class_names
 
 
-# ── Include Existing Project Routes ────────────────────────────────
+# ============================================================
+# 7. INCLUDE EXISTING PROJECT ROUTES
+# ============================================================
 
 app.include_router(predict_router)
 app.include_router(chat_router)
@@ -87,23 +101,35 @@ app.include_router(auth_router)
 app.include_router(profile_router)
 
 
-# ── Debug Endpoint: Check Registered Routes ─────────────────────────
+# ============================================================
+# 8. DEBUG ROUTES ENDPOINT
+# ============================================================
 
 @app.get("/debug-routes", tags=["Debug"])
 async def debug_routes():
 
+    registered_routes = []
+
+    for route in app.routes:
+
+        path = getattr(route, "path", None)
+        methods = getattr(route, "methods", None)
+
+        if path is not None:
+
+            registered_routes.append({
+                "path": path,
+                "methods": list(methods or [])
+            })
+
     return {
-        "registered_routes": [
-            {
-                "path": route.path,
-                "methods": list(route.methods or [])
-            }
-            for route in app.routes
-        ]
+        "registered_routes": registered_routes
     }
 
 
-# ── Health Check Endpoint ───────────────────────────────────────────
+# ============================================================
+# 9. HEALTH CHECK ENDPOINT
+# ============================================================
 
 @app.get("/health", tags=["Health"])
 async def health_check():
@@ -116,7 +142,9 @@ async def health_check():
     }
 
 
-# ── Live Weather Endpoint ──────────────────────────────────────────
+# ============================================================
+# 10. LIVE WEATHER ENDPOINT
+# ============================================================
 
 @app.get("/weather", tags=["Weather"])
 def get_weather(city: str = "Solapur"):
@@ -124,6 +152,7 @@ def get_weather(city: str = "Solapur"):
     api_key = os.getenv("WEATHER_API_KEY")
 
     if not api_key:
+
         raise HTTPException(
             status_code=503,
             detail="Weather API key is not configured on the backend."
@@ -131,6 +160,10 @@ def get_weather(city: str = "Solapur"):
 
     base_url = "https://api.openweathermap.org/data/2.5"
     india_tz = ZoneInfo("Asia/Kolkata")
+
+    # --------------------------------------------------------
+    # FETCH WEATHER DATA
+    # --------------------------------------------------------
 
     def fetch_weather_data(endpoint):
 
@@ -143,7 +176,9 @@ def get_weather(city: str = "Solapur"):
         url = f"{base_url}/{endpoint}?{params}"
 
         try:
+
             with urlopen(url, timeout=15) as response:
+
                 return json.loads(
                     response.read().decode("utf-8")
                 )
@@ -151,12 +186,14 @@ def get_weather(city: str = "Solapur"):
         except HTTPError as error:
 
             if error.code == 404:
+
                 raise HTTPException(
                     status_code=404,
                     detail="City not found."
                 )
 
             if error.code == 401:
+
                 raise HTTPException(
                     status_code=502,
                     detail="Weather API key is invalid or not active."
@@ -168,12 +205,15 @@ def get_weather(city: str = "Solapur"):
             )
 
         except URLError:
+
             raise HTTPException(
                 status_code=503,
                 detail="Unable to connect to weather provider."
             )
 
-    # Fetch current weather and forecast
+    # --------------------------------------------------------
+    # FETCH CURRENT WEATHER AND FORECAST
+    # --------------------------------------------------------
 
     current = fetch_weather_data("weather")
     forecast_data = fetch_weather_data("forecast")
@@ -181,7 +221,9 @@ def get_weather(city: str = "Solapur"):
     weather_info = current["weather"][0]
     main_info = current["main"]
 
-    # ── Prepare Five-Day Forecast ───────────────────────────────────
+    # --------------------------------------------------------
+    # PROCESS FIVE-DAY FORECAST
+    # --------------------------------------------------------
 
     daily = {}
 
@@ -224,7 +266,9 @@ def get_weather(city: str = "Solapur"):
 
                 daily[date_key]["hour"] = local_time.hour
 
-                daily[date_key]["icon"] = item["weather"][0]["icon"]
+                daily[date_key]["icon"] = (
+                    item["weather"][0]["icon"]
+                )
 
     forecast = []
 
@@ -239,7 +283,9 @@ def get_weather(city: str = "Solapur"):
             "icon": day_data["icon"]
         })
 
-    # ── Return Weather Information ──────────────────────────────────
+    # --------------------------------------------------------
+    # RETURN WEATHER INFORMATION
+    # --------------------------------------------------------
 
     return {
         "city": current["name"],
@@ -253,7 +299,10 @@ def get_weather(city: str = "Solapur"):
         "icon": weather_info["icon"],
 
         "humidity": main_info["humidity"],
-        "wind_speed": round(current["wind"]["speed"] * 3.6),
+
+        "wind_speed": round(
+            current.get("wind", {}).get("speed", 0) * 3.6
+        ),
 
         "visibility": round(
             current.get("visibility", 10000) / 1000
@@ -275,7 +324,9 @@ def get_weather(city: str = "Solapur"):
     }
 
 
-# ── Root Endpoint ──────────────────────────────────────────────────
+# ============================================================
+# 11. ROOT ENDPOINT
+# ============================================================
 
 @app.get("/", tags=["Info"])
 async def root():
@@ -296,7 +347,9 @@ async def root():
     }
 
 
-# ── Startup Event ──────────────────────────────────────────────────
+# ============================================================
+# 12. STARTUP EVENT
+# ============================================================
 
 @app.on_event("startup")
 async def startup_event():
@@ -319,7 +372,9 @@ async def startup_event():
     )
 
 
-# ── Shutdown Event ─────────────────────────────────────────────────
+# ============================================================
+# 13. SHUTDOWN EVENT
+# ============================================================
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -327,7 +382,9 @@ async def shutdown_event():
     print("[AgroVision] Backend shutting down")
 
 
-# ── Entry Point ────────────────────────────────────────────────────
+# ============================================================
+# 14. RUN APPLICATION
+# ============================================================
 
 if __name__ == "__main__":
 
