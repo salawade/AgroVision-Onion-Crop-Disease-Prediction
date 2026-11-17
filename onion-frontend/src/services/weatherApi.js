@@ -1,14 +1,14 @@
 
 /**
  * weatherApi.js
- * AgroVision - Live Weather Service
+ * AgroVision - Backend Weather Service
  *
  * Features:
- * 1. Current weather using OpenWeatherMap
+ * 1. Live weather from AgroVision FastAPI backend
  * 2. Five-day weather forecast
- * 3. Marathi agricultural advice
- * 4. Demo mode fallback when API key is missing
- * 5. Error handling for API failures
+ * 3. Marathi weather conditions
+ * 4. Marathi agricultural advice
+ * 5. Error handling
  */
 
 import axios from 'axios';
@@ -17,119 +17,50 @@ import axios from 'axios';
 // 1. API CONFIGURATION
 // =====================================================
 
-const OWM_KEY = process.env.REACT_APP_WEATHER_API_KEY;
+const API_BASE_URL = (
+  process.env.REACT_APP_API_URL ||
+  'http://localhost:8000'
+).replace(/\/+$/, '');
 
-const OWM_BASE =
-  'https://api.openweathermap.org/data/2.5';
-
-// =====================================================
-// 2. DEMO WEATHER DATA
-// =====================================================
-
-const MOCK_DB = {
-  default: {
-    city: 'Solapur',
-    country: 'IN',
-    temp: 28,
-    feels_like: 31,
-    humidity: 62,
-    wind_speed: 14,
-    visibility: 10,
-    condition: 'Partly Cloudy',
-    icon: '02d',
-    sunrise: '06:12',
-    sunset: '18:45',
-    uv_index: 6,
-    pressure: 1012,
-
-    forecast: [
-      { day: 'Mon', icon: '01d', high: 30, low: 22 },
-      { day: 'Tue', icon: '02d', high: 29, low: 21 },
-      { day: 'Wed', icon: '10d', high: 26, low: 20 },
-      { day: 'Thu', icon: '01d', high: 31, low: 23 },
-      { day: 'Fri', icon: '03d', high: 28, low: 21 },
-    ],
-
-    agro_tip:
-      'शेतात पाहणी करण्यासाठी चांगली परिस्थिती आहे. आर्द्रतेनुसार बुरशीजन्य रोगांचे निरीक्षण करा.',
-  },
-
-  pune: {
-    city: 'Pune',
-    country: 'IN',
-    temp: 26,
-    feels_like: 29,
-    humidity: 68,
-    wind_speed: 12,
-    visibility: 8,
-    condition: 'Overcast',
-    icon: '04d',
-    sunrise: '06:10',
-    sunset: '18:50',
-    uv_index: 4,
-    pressure: 1008,
-
-    forecast: [
-      { day: 'Mon', icon: '04d', high: 27, low: 20 },
-      { day: 'Tue', icon: '10d', high: 24, low: 19 },
-      { day: 'Wed', icon: '09d', high: 22, low: 18 },
-      { day: 'Thu', icon: '10d', high: 23, low: 19 },
-      { day: 'Fri', icon: '02d', high: 26, low: 20 },
-    ],
-
-    agro_tip:
-      'ढगाळ वातावरण आहे. पावसानंतर पिकांमध्ये बुरशीजन्य रोगांची लक्षणे तपासा.',
-  },
-};
+const WEATHER_URL = `${API_BASE_URL}/weather`;
 
 // =====================================================
-// 3. DEMO DATA FUNCTION
-// =====================================================
-
-const getMock = (city) => {
-  const key = city.toLowerCase();
-
-  return MOCK_DB[key] || {
-    ...MOCK_DB.default,
-    city,
-  };
-};
-
-// =====================================================
-// 4. MARATHI WEATHER CONDITION
+// 2. MARATHI WEATHER CONDITION
 // =====================================================
 
 export const getMarathiCondition = (condition = '') => {
   const value = condition.toLowerCase();
 
+  if (value.includes('thunder')) return 'मेघगर्जनेसह पाऊस';
+  if (value.includes('drizzle')) return 'रिमझिम पाऊस';
+  if (value.includes('rain')) return 'पावसाळी वातावरण';
   if (value.includes('cloud')) return 'अंशतः ढगाळ';
+  if (value.includes('overcast')) return 'पूर्ण ढगाळ';
   if (value.includes('clear')) return 'स्वच्छ आकाश';
   if (value.includes('sun')) return 'उन्हाळी वातावरण';
-  if (value.includes('rain')) return 'पावसाळी वातावरण';
-  if (value.includes('drizzle')) return 'रिमझिम पाऊस';
-  if (value.includes('thunder')) return 'मेघगर्जनेसह पाऊस';
   if (value.includes('snow')) return 'हिमवृष्टी';
   if (value.includes('mist')) return 'धुके';
   if (value.includes('fog')) return 'धुके';
   if (value.includes('haze')) return 'धुरकट वातावरण';
-  if (value.includes('overcast')) return 'पूर्ण ढगाळ';
+  if (value.includes('smoke')) return 'धुरकट वातावरण';
+  if (value.includes('dust')) return 'धुळीचे वातावरण';
 
   return condition;
 };
 
 // =====================================================
-// 5. MARATHI FARMER ADVICE
+// 3. MARATHI FARMER ADVICE
 // =====================================================
 
 const deriveAgroTip = (humidity, temp, condition) => {
   const cond = condition.toLowerCase();
 
-  if (cond.includes('rain') || cond.includes('drizzle')) {
-    return 'पावसाळी वातावरण आहे. फवारणी करण्यापूर्वी पावसाचा अंदाज तपासा. शेतात पाणी साचणार नाही याची काळजी घ्या.';
-  }
-
   if (cond.includes('thunder')) {
     return 'मेघगर्जनेसह पाऊस अपेक्षित आहे. शेतातील कामे आणि फवारणी तात्पुरती टाळा. सुरक्षित ठिकाणी राहा.';
+  }
+
+  if (cond.includes('rain') || cond.includes('drizzle')) {
+    return 'पावसाळी वातावरण आहे. फवारणी करण्यापूर्वी पावसाचा अंदाज तपासा. शेतात पाणी साचणार नाही याची काळजी घ्या.';
   }
 
   if (temp > 35) {
@@ -148,182 +79,87 @@ const deriveAgroTip = (humidity, temp, condition) => {
 };
 
 // =====================================================
-// 6. PARSE CURRENT WEATHER
-// =====================================================
-
-const parseOWM = (data) => ({
-  city: data.name,
-  country: data.sys.country,
-
-  temp: Math.round(data.main.temp),
-  feels_like: Math.round(data.main.feels_like),
-
-  humidity: data.main.humidity,
-
-  wind_speed: Math.round(data.wind.speed * 3.6),
-
-  visibility: Math.round(
-    (data.visibility || 10000) / 1000
-  ),
-
-  condition: data.weather[0].main,
-  icon: data.weather[0].icon,
-
-  sunrise: new Date(
-    data.sys.sunrise * 1000
-  ).toLocaleTimeString('en-IN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Asia/Kolkata',
-  }),
-
-  sunset: new Date(
-    data.sys.sunset * 1000
-  ).toLocaleTimeString('en-IN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Asia/Kolkata',
-  }),
-
-  uv_index: null,
-  pressure: data.main.pressure,
-
-  forecast: [],
-
-  agro_tip: deriveAgroTip(
-    data.main.humidity,
-    data.main.temp,
-    data.weather[0].main
-  ),
-});
-
-// =====================================================
-// 7. PARSE FIVE-DAY FORECAST
-// =====================================================
-
-const parseForecast = (forecastData) => {
-  const daily = {};
-
-  forecastData.list.forEach((item) => {
-    const date = item.dt_txt.split(' ')[0];
-
-    const hour = Number(
-      item.dt_txt.split(' ')[1].slice(0, 2)
-    );
-
-    if (!daily[date]) {
-      daily[date] = {
-        day: new Date(
-          item.dt * 1000
-        ).toLocaleDateString('en-US', {
-          weekday: 'short',
-          timeZone: 'Asia/Kolkata',
-        }),
-
-        high: item.main.temp_max,
-        low: item.main.temp_min,
-        icon: item.weather[0].icon,
-        hour,
-        selectedHourDifference: Math.abs(hour - 12),
-      };
-    } else {
-      daily[date].high = Math.max(
-        daily[date].high,
-        item.main.temp_max
-      );
-
-      daily[date].low = Math.min(
-        daily[date].low,
-        item.main.temp_min
-      );
-
-      const difference = Math.abs(hour - 12);
-
-      if (difference < daily[date].selectedHourDifference) {
-        daily[date].icon = item.weather[0].icon;
-        daily[date].selectedHourDifference = difference;
-      }
-    }
-  });
-
-  return Object.values(daily)
-    .slice(0, 5)
-    .map((day) => ({
-      day: day.day,
-      icon: day.icon,
-      high: Math.round(day.high),
-      low: Math.round(day.low),
-    }));
-};
-
-// =====================================================
-// 8. FETCH LIVE WEATHER
+// 4. FETCH LIVE WEATHER FROM BACKEND
 // =====================================================
 
 export const fetchWeather = async (city = 'Solapur') => {
-
-  // Demo mode if API key is missing
-  if (!OWM_KEY) {
-    console.warn(
-      'Weather API key missing. Running in demo mode.'
-    );
-
-    await new Promise((resolve) =>
-      setTimeout(resolve, 500)
-    );
-
-    return getMock(city);
-  }
-
   try {
+    const response = await axios.get(WEATHER_URL, {
+      params: {
+        city: city
+      },
+      timeout: 30000,
+    });
 
-    // Fetch current weather and forecast together
-    const [weatherResponse, forecastResponse] =
-      await Promise.all([
+    const data = response.data;
 
-        axios.get(`${OWM_BASE}/weather`, {
-          params: {
-            q: city,
-            appid: OWM_KEY,
-            units: 'metric',
-          },
-          timeout: 15000,
-        }),
+    // Check whether the backend returned valid data
+    if (
+      !data ||
+      typeof data.temp !== 'number' ||
+      typeof data.humidity !== 'number'
+    ) {
+      throw new Error('Invalid weather data received from backend.');
+    }
 
-        axios.get(`${OWM_BASE}/forecast`, {
-          params: {
-            q: city,
-            appid: OWM_KEY,
-            units: 'metric',
-          },
-          timeout: 15000,
-        }),
+    // Prepare weather information
+    const weatherData = {
+      city: data.city || city,
+      country: data.country || 'IN',
 
-      ]);
+      temp: data.temp,
+      feels_like: data.feels_like,
 
-    const currentWeather = parseOWM(
-      weatherResponse.data
-    );
+      humidity: data.humidity,
+      wind_speed: data.wind_speed,
+      visibility: data.visibility,
 
-    const forecast = parseForecast(
-      forecastResponse.data
-    );
+      condition: data.condition || 'Unknown',
+      description: data.description || '',
+      icon: data.icon || '01d',
 
-    return {
-      ...currentWeather,
-      forecast,
+      sunrise: data.sunrise || '--:--',
+      sunset: data.sunset || '--:--',
+
+      uv_index: null,
+      pressure: data.pressure,
+
+      forecast: Array.isArray(data.forecast)
+        ? data.forecast
+        : [],
+
+      agro_tip: deriveAgroTip(
+        data.humidity,
+        data.temp,
+        data.condition || ''
+      ),
     };
 
-  } catch (error) {
+    console.log('Live weather loaded:', weatherData);
 
+    return weatherData;
+
+  } catch (error) {
     console.error(
-      'Weather API error:',
+      'AgroVision Weather Error:',
       error.response?.data || error.message
     );
 
-    throw new Error(
-      error.response?.data?.message ||
-      'Unable to fetch live weather.'
-    );
+    const message =
+      error.response?.data?.detail ||
+      error.message ||
+      'Unable to fetch live weather.';
+
+    throw new Error(message);
   }
+};
+
+// =====================================================
+// 5. WEATHER ICON URL
+// =====================================================
+
+export const getWeatherIconUrl = (icon) => {
+  if (!icon) return '';
+
+  return `https://openweathermap.org/img/wn/${icon}@2x.png`;
 };
