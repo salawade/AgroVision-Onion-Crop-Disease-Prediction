@@ -87,6 +87,22 @@ app.include_router(auth_router)
 app.include_router(profile_router)
 
 
+# ── Debug Endpoint: Check Registered Routes ─────────────────────────
+
+@app.get("/debug-routes", tags=["Debug"])
+async def debug_routes():
+
+    return {
+        "registered_routes": [
+            {
+                "path": route.path,
+                "methods": list(route.methods or [])
+            }
+            for route in app.routes
+        ]
+    }
+
+
 # ── Health Check Endpoint ───────────────────────────────────────────
 
 @app.get("/health", tags=["Health"])
@@ -105,7 +121,6 @@ async def health_check():
 @app.get("/weather", tags=["Weather"])
 def get_weather(city: str = "Solapur"):
 
-    # Get private API key from Render environment variables
     api_key = os.getenv("WEATHER_API_KEY")
 
     if not api_key:
@@ -117,7 +132,6 @@ def get_weather(city: str = "Solapur"):
     base_url = "https://api.openweathermap.org/data/2.5"
     india_tz = ZoneInfo("Asia/Kolkata")
 
-    # Fetch data from OpenWeatherMap
     def fetch_weather_data(endpoint):
 
         params = urlencode({
@@ -159,7 +173,8 @@ def get_weather(city: str = "Solapur"):
                 detail="Unable to connect to weather provider."
             )
 
-    # Get current weather and forecast
+    # Fetch current weather and forecast
+
     current = fetch_weather_data("weather")
     forecast_data = fetch_weather_data("forecast")
 
@@ -201,7 +216,8 @@ def get_weather(city: str = "Solapur"):
                 item["main"]["temp_min"]
             )
 
-            # Select forecast icon closest to 12 PM
+            # Select forecast icon closest to noon
+
             if abs(local_time.hour - 12) < abs(
                 daily[date_key]["hour"] - 12
             ):
@@ -273,6 +289,7 @@ async def root():
             "docs": "/docs",
             "health": "/health",
             "weather": "/weather?city=Solapur",
+            "debug": "/debug-routes",
             "predict": "/predict/",
             "chat": "/chat/"
         }
